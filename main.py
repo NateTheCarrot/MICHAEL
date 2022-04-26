@@ -30,7 +30,7 @@ mycursor = mydb.cursor()
 @client.event
 async def on_ready():
     print('Currently online!')
-    await client.change_presence(activity=discord.Streaming(name= prefix + "help", url="https://twitch.tv/NateTheCarrot"))
+    await client.change_presence(activity=discord.Streaming(name= prefix + "add to register a channel!", url="https://twitch.tv/NateTheCarrot"))
     global log_channel
     log_channel = client.get_channel(config.get("logs_id"))
 
@@ -73,5 +73,43 @@ async def on_message(message):
             return
         else:
             await message.channel.send(f"Sorry, you need the `MANAGE_CHANNELS` permission to do that. If you believe this is a mistake, please contact <@{owner_id}>.")
+    
+    mycursor.execute("SELECT * FROM allowed_channels WHERE channel_id = " + str(message.channel.id))
+    myresult = mycursor.fetchone() # Get the information about the current channel.
+    try:
+        if(myresult[2] != 0): # If it can go in the channel
+            mycursor.execute("SELECT * FROM messages WHERE original = '" + msg + "'")
+            myresult = mycursor.fetchone()
+            if(myresult != None):
+                replies_to_use = myresult[2].split(", ")
+                true_reply = random.choice(replies_to_use) # I'm deciding to use random.choice as a temporary option until I can work out a rating/reward system for the bot.
+                if(validators.url(true_reply)):
+                    await message.channel.send(true_reply)
+                    return
+                else:
+                    async with message.channel.typing(): # Occasionally will duplicate the typing if server connection issues occur - EDIT: Still may happen if connection errors occur, but too a much less degree.
+                        await asyncio.sleep(len(true_reply) / 10) # / 10 to make it more realistic (and faster). That means a 10 letter word would take 10 seconds to type.
+                        await message.channel.send(true_reply)
+                        return
+            else:
+                edited_msg = msg.replace(".", "").replace("?", "").replace("!", "")
+                mycursor.execute("SELECT * FROM messages WHERE original = '" + edited_msg + "'")
+                myresult = mycursor.fetchone()
+                if(myresult != None):
+                    replies_to_use = myresult[2].split(", ")
+                    true_reply = random.choice(replies_to_use) # I'm deciding to use random.choice as a temporary option until I can work out a rating/reward system for the bot.
+                    if(validators.url(true_reply)):
+                        await message.channel.send(true_reply)
+                        return
+                    else:
+                        async with message.channel.typing(): # Occasionally will duplicate the typing if server connection issues occur - EDIT: Still may happen if connection errors occur, but too a much less degree.
+                            await asyncio.sleep(len(true_reply) / 10) # / 10 to make it more realistic (and faster). That means a 10 letter word would take 10 seconds to type.
+                            await message.channel.send(true_reply)
+                            return
+                await message.channel.send("**REPEAT** *(what should be the response for this message?)*: " + msg)
+        else:
+            return
+    except TypeError:
+        return
 
 client.run(token)
