@@ -39,7 +39,7 @@ async def on_message(message):
     if(message.author.bot): # Checks if the person who sent the message is a bot, and if they are:
         return # It will ignore the message.
 
-    msg = message.content.lower()
+    msg = message.content.lower().replace("'", "").replace("\"", "").replace("`", "")
     if(msg == prefix + "add"):
         if message.author.guild_permissions.manage_channels: # If the author has the "manage channels" permission
              # Look through all the channels and see if it's already added
@@ -107,6 +107,23 @@ async def on_message(message):
                             await message.channel.send(true_reply)
                             return
                 await message.channel.send("**REPEAT** *(what should be the response for this message?)*: " + msg)
+                def check(message):
+                    return not message.author.bot
+                reply = await client.wait_for('message', check=check)
+                sql = "INSERT INTO messages (original, replies) VALUES (%s, %s)"
+                val = (msg, reply.content.lower())
+                mycursor.execute(sql, val)
+                mydb.commit()
+                await message.channel.send("Successfully added reply, thanks for contributing!")
+                await log_channel.send("<@" + str(message.author.id) + "> added phrase \"`" + reply.content.lower() + "`\" to `" + msg + "`")
+                return
+                """
+                mycursor.execute("UPDATE messages SET replies = '" + myresult[2] + ", " + reply + "' WHERE sentences = '" + filter_message(word[0]) + "'")
+                mydb.commit()
+                await message.channel.send("Successfully added reply, thanks for contributing!")
+                await log_channel.send("<@" + str(message.author.id) + "> added phrase \"`" + filter_message(word[1]) + "`\" to `" + filter_message(word[0]) + "`")
+                return
+                """
         else:
             return
     except TypeError:
