@@ -18,6 +18,8 @@ owner_id = config.get("owner_id")
 
 client = discord.Client()
 
+queue = []
+
 mydb = mysql.connector.connect(
   host=config.get("db_host"),
   user=config.get("db_user"),
@@ -77,6 +79,9 @@ async def on_message(message):
     mycursor.execute("SELECT * FROM allowed_channels WHERE channel_id = " + str(message.channel.id))
     myresult = mycursor.fetchone() # Get the information about the current channel.
     try:
+        global queue
+        if(message.author.id in queue):
+            return
         if(myresult[2] != 0): # If it can go in the channel
             mycursor.execute("SELECT * FROM messages WHERE original = '" + msg + "'")
             myresult = mycursor.fetchone()
@@ -107,6 +112,7 @@ async def on_message(message):
                             await message.channel.send(true_reply)
                             return
                 await message.channel.send("**REPEAT** *(what should be the response for this message?)*: " + msg)
+                queue.append(message.author.id)
                 def check(message):
                     return not message.author.bot
                 reply = await client.wait_for('message', check=check)
@@ -116,6 +122,7 @@ async def on_message(message):
                 mydb.commit()
                 await message.channel.send("Successfully added reply, thanks for contributing!")
                 await log_channel.send("<@" + str(message.author.id) + "> added phrase \"`" + reply.content.lower() + "`\" to `" + msg + "`")
+                queue.remove(message.author.id)
                 return
                 """
                 mycursor.execute("UPDATE messages SET replies = '" + myresult[2] + ", " + reply + "' WHERE sentences = '" + filter_message(word[0]) + "'")
